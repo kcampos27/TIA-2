@@ -75,9 +75,39 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
+        # 1. Iniciar con la puntuación del estado sucesor
+        score = successorGameState.getScore()
+
+        # 2. Evaluar la comida usando la distancia Manhattan
+        foodList = newFood.asList()
+        if foodList:
+            # Encontrar la distancia a la comida más cercana
+            min_food_dist = min([util.manhattanDistance(newPos, food) for food in foodList])
+            # Usar el valor inverso: cuanto más cerca, mayor el valor sumado
+            score += 1.0 / min_food_dist
+
+        # 3. Evaluar la amenaza o ventaja de los fantasmas
+        for i in range(len(newGhostStates)):
+            ghostState = newGhostStates[i]
+            ghostPos = ghostState.getPosition()
+            scaredTime = newScaredTimes[i]
+
+            # Distancia al fantasma actual
+            dist_to_ghost = util.manhattanDistance(newPos, ghostPos)
+
+            if scaredTime == 0:
+                # Si el fantasma no está asustado y está demasiado cerca (a 1 paso de morir)
+                if dist_to_ghost < 2:
+                    score -= 1000  # Penalización severa para evitar la muerte
+            else:
+                # Si el fantasma está asustado, ¡es bueno acercarse!
+                if dist_to_ghost < 2:
+                    score += 1000  # Recompensa alta por comer al fantasma
+
+        return score
 
 
-        return successorGameState.getScore()#Tendreis que comentar esta linea y devolver el valor que calculeis
+        # return successorGameState.getScore()#Tendreis que comentar esta linea y devolver el valor que calculeis
 
 
 def scoreEvaluationFunction(currentGameState):
