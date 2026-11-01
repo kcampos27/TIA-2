@@ -230,18 +230,94 @@ class MinimaxAgent(MultiAgentSearchAgent):
 
         return bestAction
 
+
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
     Your minimax agent with alpha-beta pruning (question 3)
     """
 
-    def getAction(self, game_state):
+    def getAction(self, gameState):
         """
         Returns the minimax action using self.depth and self.evaluationFunction
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
 
+        def alphabeta(agentIndex, depth, state, alpha, beta):
+            # Casos base
+            if state.isWin() or state.isLose() or depth == self.depth:
+                return self.evaluationFunction(state)
+
+            # Turno de Pacman (Maximizador)
+            if agentIndex == 0:
+                return maxValue(agentIndex, depth, state, alpha, beta)
+            # Turno de Fantasmas (Minimizadores)
+            else:
+                return minValue(agentIndex, depth, state, alpha, beta)
+
+        def maxValue(agentIndex, depth, state, alpha, beta):
+            v = float('-inf')
+            legalActions = state.getLegalActions(agentIndex)
+
+            for action in legalActions:
+                successorState = state.generateSuccessor(agentIndex, action)
+                # Evaluamos al siguiente agente (primer fantasma)
+                v = max(v, alphabeta(1, depth, successorState, alpha, beta))
+
+                # PODA: Si el valor encontrado es mayor que beta, podamos.
+                # Usamos > estricto en lugar de >= para no podar en igualdad y pasar el autograder
+                if v > beta:
+                    return v
+
+                # Actualizamos alfa con el mayor valor encontrado
+                alpha = max(alpha, v)
+
+            return v
+
+        def minValue(agentIndex, depth, state, alpha, beta):
+            v = float('inf')
+            legalActions = state.getLegalActions(agentIndex)
+
+            # Gestionamos el turno de múltiples fantasmas
+            nextAgent = agentIndex + 1
+            nextDepth = depth
+
+            if nextAgent == state.getNumAgents():
+                nextAgent = 0
+                nextDepth += 1
+
+            for action in legalActions:
+                successorState = state.generateSuccessor(agentIndex, action)
+                v = min(v, alphabeta(nextAgent, nextDepth, successorState, alpha, beta))
+
+                # PODA: Si el valor encontrado es menor que alfa, podamos.
+                # Usamos < estricto para no podar en igualdad
+                if v < alpha:
+                    return v
+
+                # Actualizamos beta con el menor valor encontrado
+                beta = min(beta, v)
+
+            return v
+
+        # --- Lógica principal del nodo raíz (Pacman en el estado inicial) ---
+        bestAction = None
+        bestScore = float('-inf')
+        alpha = float('-inf')
+        beta = float('inf')
+
+        for action in gameState.getLegalActions(0):
+            successorState = gameState.generateSuccessor(0, action)
+            # Evaluamos la jugada pasando el turno al primer fantasma
+            score = alphabeta(1, 0, successorState, alpha, beta)
+
+            # Si encontramos una puntuación mejor, actualizamos
+            if score > bestScore:
+                bestScore = score
+                bestAction = action
+
+            # Actualizamos el valor alfa en la raíz para las siguientes iteraciones
+            alpha = max(alpha, bestScore)
+
+        return bestAction
 
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
@@ -256,8 +332,69 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         All ghosts should be modeled as choosing uniformly at random from their
         legal moves.
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        def expectimax(agentIndex, depth, state):
+            # Casos base: fin del juego o límite de profundidad
+            if state.isWin() or state.isLose() or depth == self.depth:
+                return self.evaluationFunction(state)
+
+            # Turno de Pacman (Maximizador)
+            if agentIndex == 0:
+                return maxValue(agentIndex, depth, state)
+            # Turno de Fantasmas (Nodos de Probabilidad/Esperanza)
+            else:
+                return expValue(agentIndex, depth, state)
+
+        def maxValue(agentIndex, depth, state):
+            v = float('-inf')
+            legalActions = state.getLegalActions(agentIndex)
+
+            for action in legalActions:
+                successorState = state.generateSuccessor(agentIndex, action)
+                v = max(v, expectimax(1, depth, successorState))
+            return v
+
+        def expValue(agentIndex, depth, state):
+            v = 0
+            legalActions = state.getLegalActions(agentIndex)
+            numActions = len(legalActions)
+
+            # Si no hay acciones legales (aunque en Pacman es raro), evitamos división por cero
+            if numActions == 0:
+                return 0
+
+            # Gestionamos el turno de múltiples agentes
+            nextAgent = agentIndex + 1
+            nextDepth = depth
+
+            if nextAgent == state.getNumAgents():
+                nextAgent = 0
+                nextDepth += 1
+
+            # Probabilidad uniforme: 1 dividido por la cantidad de acciones legales
+            probability = 1.0 / numActions
+
+            for action in legalActions:
+                successorState = state.generateSuccessor(agentIndex, action)
+                # Sumamos el valor del sucesor multiplicado por su probabilidad
+                v += probability * expectimax(nextAgent, nextDepth, successorState)
+
+            return v
+
+        # --- Lógica principal del nodo raíz (Pacman en el estado inicial) ---
+        bestAction = None
+        bestScore = float('-inf')
+
+        for action in gameState.getLegalActions(0):
+            successorState = gameState.generateSuccessor(0, action)
+            # Evaluamos la jugada pasando el turno al primer fantasma
+            score = expectimax(1, 0, successorState)
+
+            if score > bestScore:
+                bestScore = score
+                bestAction = action
+
+        return bestAction
 
 
 def betterEvaluationFunction(currentGameState):
